@@ -1,0 +1,42 @@
+      ***************************************************************   00000105
+      *      THIS PROGRAM IS FOR SORTING THE SALES TRANSACTION FILE *   00001005
+      * ON BASIS OF PET-ID OF PETS.                                 *   00002005
+      * AUTHORS    - SHIVANI WADKE                                  *   00003005
+      *            - ANKIT BHATTACHARJEE                            *   00004005
+      * FILES USED - 1) OZA066.TRANS.PS (SALES TRANSACTION FILE)    *   00005005
+      ***************************************************************   00006005
+                                                                        00007005
+         ID DIVISION.                                                   00010000
+         PROGRAM-ID.  SORTSTDY.                                         00020005
+         ENVIRONMENT  DIVISION.                                         00020105
+         INPUT-OUTPUT SECTION.                                          00020200
+         FILE-CONTROL.                                                  00020300
+             SELECT INFILE ASSIGN TO PSDD1.                             00020401
+             SELECT OUTFILE ASSIGN TO PSDD1.                            00020501
+             SELECT SORT-FILE ASSIGN TO SORTWK01.                       00020600
+                                                                        00020700
+         DATA         DIVISION.                                         00020805
+         FILE         SECTION.                                          00020905
+         FD INFILE.                                                     00021002
+         01 INREC       PIC X(80).                                      00021201
+         FD OUTFILE.                                                    00021302
+         01 OUTREC      PIC X(80).                                      00021501
+         SD SORT-FILE.                                                  00021600
+         01 SORT-REC.                                                   00021700
+            05 FS-PETID PIC X(3).                                       00021801
+            05 FS-MRP   PIC 9(4)V9(2).                                  00021901
+            05 FS-QTY   PIC 99.                                         00022001
+            05 FILLER   PIC X(69).                                      00022101
+                                                                        00023000
+      *******************SORTING PROGRAM***********************         00023105
+                                                                        00023205
+         PROCEDURE    DIVISION.                                         00024005
+         A100-MAIN.                                                     00025000
+            DISPLAY 'SORT BY PET ID'.                                   00026001
+            SORT SORT-FILE                                              00027000
+            ASCENDING KEY FS-PETID                                      00028001
+            USING INFILE GIVING OUTFILE                                 00030001
+            IF SORT-RETURN NOT = 0                                      00040000
+               DISPLAY 'SORT-RETURN: ' SORT-RETURN                      00050000
+            END-IF                                                      00060000
+            EXIT PROGRAM.                                               00070003

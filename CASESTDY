@@ -1,0 +1,170 @@
+      ******************************************************************00000158
+      *      THE PROGRAM IS ABOUT A RETAIL CHAIN SYSTEM WHICH MAINTAINS*00000258
+      *  THE MASTER DATA ABOUT THE PETS ON SALE. DEPENDING ON          *00000358
+      *  REQUIREMENTS AND SPECIFICATIONS GIVEN BY THE STORE, PROGRAM   *00000458
+      *  DECIDES WHETHER TO PROCESS OR UNPROCESS THE ORDERS.           *00000558
+      *                                                                *00000658
+      *  AUTHORS OF PROGRAM -SHIVANI WADKE                             *00001058
+      *                     -ANKIT BHATTACHARJEE.                      *00002058
+      *  NAMES OF FILES USED-                                          *00003058
+      *           1) OZA066.MASTER.KSDS (PET'S MASTER FILE)            *00004058
+      *           2) OZA066.MASTER.KSDS.AIX (ALTERNATE INDEX FILE)     *00005058
+      *           3) OZA066.TRANS.PS    (SALE TRANSACTION FILE)        *00006058
+      *           4) OZA066.PROSALE.ESDS (PROCESSED SALES FILE)        *00007058
+      *           5) OZA066.UNPRO.PS    (UNPROCESSED SALES FILE)       *00008058
+      *  PROGRAMS CALLED    -                                          *00009058
+      *           1) SORTSTDY (FOR SORTING SALE TRANSACTION FILE)      *00009158
+      *           2) PROREPT  (FOR CREATING SALES REPORT)              *00009258
+      ******************************************************************00009358
+                                                                        00009441
+         ID           DIVISION.                                         00010023
+         PROGRAM-ID.  CASESTDY.                                         00020041
+                                                                        00020141
+         ENVIRONMENT  DIVISION.                                         00021023
+         INPUT-OUTPUT SECTION.                                          00022000
+         FILE-CONTROL.                                                  00023040
+            SELECT KSDS-MASTER ASSIGN TO KSDSDD                         00024014
+            ORGANIZATION IS INDEXED                                     00025200
+            ACCESS MODE IS DYNAMIC                                      00025300
+            RECORD KEY IS FS-PETID OF MASTERREC                         00025441
+            ALTERNATE KEY IS FS-PETTYPE OF MASTERREC WITH DUPLICATES    00025541
+            FILE STATUS IS WS-FS1.                                      00025602
+                                                                        00025741
+            SELECT TRANSPS ASSIGN TO PSDD1                              00025815
+            FILE STATUS IS WS-FS2.                                      00025902
+                                                                        00026041
+            SELECT PROESDS ASSIGN TO AS-ESDSDD                          00026128
+            ORGANIZATION IS SEQUENTIAL                                  00026202
+            ACCESS MODE IS SEQUENTIAL                                   00026302
+            FILE STATUS IS WS-FS3.                                      00026402
+                                                                        00026541
+            SELECT UNPROPS ASSIGN TO PSDD2                              00026615
+            FILE STATUS IS WS-FS4.                                      00026702
+                                                                        00026800
+         DATA         DIVISION.                                         00027123
+         FILE         SECTION.                                          00027223
+      * FILE DESCRIPTION FOR PET'S MASTER FILE (KSDS)                   00027341
+         FD KSDS-MASTER.                                                00027414
+         COPY COPYKSDS.                                                 00027559
+                                                                        00028841
+      * FILE DESCRIPTION FOR SALE TRANSACTION FILE (PS)                 00028941
+         FD TRANSPS.                                                    00029025
+         01 TRANSREC.                                                   00029141
+            05 FS-PETID   PIC X(3).                                     00029225
+            05 FS-MRP     PIC 9(4)V9(2).                                00029402
+            05 FS-QTY     PIC 99.                                       00029502
+            05            PIC X(69).                                    00029627
+                                                                        00029741
+      * FILE DESCRIPTION FOR PROCESSED SALES FILE (ESDS)                00029841
+         FD PROESDS.                                                    00030025
+         01 PROREC.                                                     00030141
+            05 FS-PETID   PIC X(3).                                     00030225
+            05 FS-DATE    PIC X(6).                                     00030656
+            05 FS-QTY     PIC 99.                                       00030802
+            05 FS-TPRICE  PIC 9(5)V9(2).                                00030902
+            05 FS-LP      PIC S9(4)V9(2).                               00031011
+            05            PIC X(56).                                    00031125
+                                                                        00031241
+      * FILE DESCRIPTION FOR UNPROCESSED FILE (PS)                      00031341
+         FD UNPROPS.                                                    00031515
+         01 UNPROREC.                                                   00031641
+            05 FS-PETID   PIC X(3).                                     00031705
+            05 FS-MRP     PIC 9(4)V9(2).                                00031809
+            05 FS-QTY     PIC 99.                                       00031905
+            05 FS-REMRK   PIC X(15).                                    00032053
+            05            PIC X(54).                                    00032153
+                                                                        00033149
+         WORKING-STORAGE SECTION.                                       00033246
+         77 WS-FS1        PIC 99.                                       00033346
+         77 WS-FS2        PIC 99.                                       00033446
+         77 WS-FS3        PIC 99.                                       00033546
+         77 WS-FS4        PIC 99.                                       00033646
+                                                                        00033850
+      *******************CASE STUDY***********************              00033950
+                                                                        00034058
+         PROCEDURE       DIVISION.                                      00034150
+         A100-MAIN.                                                     00034250
+            CALL 'SORTSTDY'                                             00035050
+            OPEN I-O KSDS-MASTER                                        00040029
+            OPEN INPUT TRANSPS                                          00041015
+            OPEN OUTPUT PROESDS                                         00042015
+            OPEN OUTPUT UNPROPS                                         00043015
+            DISPLAY 'OPEN KS' WS-FS1 'PS' WS-FS2 ' ES ' WS-FS3          00044035
+            PERFORM READ-TRANSPS-PARA UNTIL WS-FS2 NOT = 0              00120715
+            CLOSE KSDS-MASTER                                           00121315
+            CLOSE TRANSPS                                               00121415
+            CLOSE PROESDS                                               00121515
+            CLOSE UNPROPS                                               00121615
+            CALL 'PROREPT'                                              00121847
+            STOP RUN.                                                   00122115
+                                                                        00122215
+      *  READING THE SALES TRANSACTION FILE                             00123041
+         READ-TRANSPS-PARA.                                             00129205
+            READ TRANSPS                                                00129418
+               AT END DISPLAY 'ALL RECORDS PROCESSED' WS-FS2            00129504
+               NOT AT END                                               00129604
+               DISPLAY 'SALE READ:' TRANSREC                            00129741
+               MOVE FS-PETID OF TRANSREC TO FS-PETID OF MASTERREC       00129841
+               READ KSDS-MASTER                                         00130041
+               KEY IS FS-PETID OF MASTERREC                             00130241
+               INVALID KEY                                              00130341
+                  MOVE 'INVALID KEY' TO FS-REMRK                        00130446
+                  PERFORM UNPROPS-PARA                                  00130541
+               NOT INVALID KEY                                          00130641
+               DISPLAY 'MASTER READ:' MASTERREC                         00130741
+               IF FS-MRP OF TRANSREC IS NOT NUMERIC                     00130841
+                  MOVE 'NOT NUMERIC' TO FS-REMRK                        00130946
+                  PERFORM UNPROPS-PARA                                  00131041
+               ELSE                                                     00131141
+               IF FS-QTY OF TRANSREC IS NOT NUMERIC                     00131241
+                  MOVE 'NOT NUMERIC' TO FS-REMRK                        00131346
+                  PERFORM UNPROPS-PARA                                  00131441
+               ELSE                                                     00131541
+                  PERFORM SALES-PARA                                    00131641
+               END-IF                                                   00131741
+               END-IF                                                   00131841
+               END-READ                                                 00131941
+            END-READ.                                                   00132135
+                                                                        00132520
+         SALES-PARA.                                                    00133005
+            IF FS-QTY OF TRANSREC <= FS-QTY OF MASTERREC                00140041
+               PERFORM WRITE-ESDS-PARA                                  00150005
+               PERFORM REWRITE-KSDS-PARA                                00160009
+            ELSE                                                        00170005
+               MOVE 'INSUFFICIENT' TO FS-REMRK                          00171046
+               PERFORM UNPROPS-PARA                                     00180015
+            END-IF.                                                     00200010
+                                                                        00210005
+      *  WRITING PROCESSED SALES IN ESDS FILE                           00211041
+         WRITE-ESDS-PARA.                                               00220005
+            IF WS-FS3 = 0                                               00230019
+               MOVE FS-PETID OF TRANSREC TO FS-PETID OF PROREC          00250041
+               ACCEPT FS-DATE OF PROREC FROM DATE                       00260041
+               MOVE FS-QTY OF TRANSREC TO FS-QTY OF PROREC              00270041
+               COMPUTE FS-TPRICE = FS-MRP OF TRANSREC * FS-QTY OF       00280044
+                                             TRANSREC                   00281044
+               COMPUTE  FS-LP = FS-TPRICE - (FS-CP OF MASTERREC *       00290041
+                                             FS-QTY OF TRANSREC)        00300041
+               WRITE PROREC                                             00310041
+            ELSE                                                        00320019
+               DISPLAY 'WRITE ESDS FAILED WITH ' WS-FS3                 00330019
+            END-IF.                                                     00340019
+                                                                        00350009
+      *  UPDATING MASTER KSDS FILE                                      00351041
+         REWRITE-KSDS-PARA.                                             00360009
+            IF WS-FS1 = 0                                               00370019
+               COMPUTE FS-QTY OF MASTERREC = FS-QTY OF MASTERREC -      00390044
+                                          FS-QTY OF TRANSREC            00400041
+               REWRITE MASTERREC                                        00410041
+            ELSE                                                        00420019
+               DISPLAY 'REWRITE KSDS FAILED WITH ' WS-FS1               00430019
+            END-IF.                                                     00440019
+                                                                        00450009
+      *  WRITING UNPROCESSED SALES TO PS FILE                           00451041
+         UNPROPS-PARA.                                                  00460015
+            IF WS-FS4 = 0                                               00470019
+               MOVE CORR TRANSREC TO UNPROREC                           00490041
+                WRITE UNPROREC                                          00500041
+            ELSE                                                        00501019
+                DISPLAY 'WRITE UNPROPS FAILED WITH ' WS-FS4             00502019
+            END-IF.                                                     00510019
