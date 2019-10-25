@@ -1,0 +1,156 @@
+      ****************************************************************  00000168
+      *     THIS PROGRAM IS CREATING OUTSTANDING LOANS REPORT FOR    *  00001092
+      * EVERY LOAN TRANSACTION OF CUSTOMERS.                         *  00002093
+      * AUTHORS    - SHIVANI WADKE                                   *  00005068
+      *            - CHEENMAYA BHUTAD                                *  00006099
+      *            - SAHITI MADDIPATLA                               *  00006199
+      * FILES USED - 1) OZA066.DB2.REPFILE (OUTSTANDING REPORT)      *  00006293
+      ****************************************************************  00006592
+                                                                        00007065
+         ID           DIVISION.                                         00010000
+         PROGRAM-ID.  REPRT.                                            00020073
+                                                                        00021000
+         ENVIRONMENT  DIVISION.                                         00022000
+         INPUT-OUTPUT SECTION.                                          00023000
+         FILE-CONTROL.                                                  00024000
+             SELECT REPFILE ASSIGN TO DD3                               00025094
+             ORGANIZATION IS SEQUENTIAL                                 00026071
+             ACCESS MODE  IS SEQUENTIAL                                 00027093
+             FILE STATUS  IS WS-FS1.                                    00027293
+                                                                        00050000
+         DATA         DIVISION.                                         00060000
+         FILE         SECTION.                                          00070000
+         FD REPFILE.                                                    00170000
+         01 REPREC        PIC X(80).                                    00171019
+                                                                        00240200
+         WORKING-STORAGE SECTION.                                       00240300
+            EXEC SQL                                                    00240471
+               INCLUDE LOANTRAN                                         00240571
+            END-EXEC.                                                   00240671
+            EXEC SQL                                                    00240771
+               INCLUDE SQLCA                                            00240871
+            END-EXEC.                                                   00240971
+            EXEC SQL                                                    00241071
+               DECLARE CUR CURSOR FOR                                   00241171
+               SELECT LNO,CID,TYPE,ODATE,OUTAMT                         00241271
+               FROM LOAN_TRANS                                          00241371
+               ORDER BY TYPE,CID                                        00241499
+            END-EXEC.                                                   00241571
+         01 WS-DATE.                                                    00241671
+            05 FNAME      PIC X(12)     VALUE 'INDOBANK LTD'.           00241793
+            05 FILLER     PIC X(49)     VALUE SPACES.                   00241899
+            05 DT         PIC X(6)      VALUE 'DATE: '.                 00241993
+            05 WS-DT      PIC XX/XX/XXXX.                               00242088
+         77 TEMPDT        PIC XXXX/XX/XX.                               00242188
+         01 WS-PAGE.                                                    00242271
+            05 FILLER     PIC X(70).                                    00242499
+            05 PG         PIC X(6)      VALUE 'PAGE: '.                 00242599
+            05 WS-PG      PIC 9         VALUE 1.                        00242693
+         01 WS-HEAD1.                                                   00242771
+            05 FILLER     PIC X(30).                                    00242899
+            05 HEAD1      PIC X(25)     VALUE 'OUTSTANDING LOAN REPORT'.00242999
+         01 WS-HEAD2      PIC X(80)     VALUE 'LOAN CATEGORY    CUSTOMER00243087
+      -     ' NUMBER    LOAN NUMBER    DATE OF OPENING     AMOUNT'.     00243299
+         01 WS-LINE       PIC X(80)     VALUE ALL '-'.                  00243493
+         01 WS-SPACE      PIC X(80)     VALUE ALL SPACES.               00243593
+         01 WS-DETAILS.                                                 00290000
+            05 FILLER     PIC X(5).                                     00291099
+            05 WS-TYPE    PIC XX.                                       00300087
+            05 FILLER     PIC X(16).                                    00310099
+            05 WS-CID     PIC X(5).                                     00320072
+            05 FILLER     PIC X(10).                                    00330099
+            05 WS-LNO     PIC 9(5).                                     00340072
+            05 FILLER     PIC X(11).                                    00350099
+            05 WS-ODATE   PIC X(10).                                    00360099
+            05 FILLER     PIC X(7).                                     00370099
+            05 WS-OUTAMT  PIC 9(7).                                     00400099
+         01 TEMPODT.                                                    00410099
+            05 DD         PIC XX.                                       00420099
+            05 FILLER     PIC X         VALUE '/'.                      00420199
+            05 MM         PIC XX.                                       00420299
+            05 FILLER     PIC X         VALUE '/'.                      00420399
+            05 YY         PIC XXXX.                                     00420499
+         01 WS-TOT.                                                     00421072
+            05 FILLER     PIC X(32)     VALUE 'OUTSTANDING AMOUNT GRAND 00430099
+      -         'TOTAL: '.                                              00430199
+            05 WS-TOTAMT  PIC 9(9)      VALUE 0.                        00431099
+         77 WS-FS1        PIC 99.                                       00440072
+         77 WS-REC        PIC 99        VALUE 0.                        00450099
+                                                                        00460000
+      **********************OUTSTANDING REPORT***********************   00470072
+                                                                        00471068
+         PROCEDURE    DIVISION.                                         00480000
+         MAIN-PARA.                                                     00490000
+             MOVE FUNCTION CURRENT-DATE(1:8) TO TEMPDT                  00491088
+             DISPLAY "TEMPDT"  TEMPDT                                   00491196
+             MOVE TEMPDT(1:4) TO WS-DT(7:4)                             00492088
+             MOVE TEMPDT(5:4) TO WS-DT(3:4)                             00493088
+             MOVE TEMPDT(9:2) TO WS-DT(1:2)                             00494095
+             PERFORM OPEN-PARA                                          00500000
+             PERFORM CNTRL-PARA                                         00500172
+             PERFORM READ-PARA UNTIL SQLCODE NOT = 0                    00501072
+             EXEC SQL                                                   00501172
+                CLOSE CUR                                               00501272
+             END-EXEC.                                                  00501382
+                                                                        00520000
+      ******************OPENING REPFILE AND CURSOR********************  00530093
+         OPEN-PARA.                                                     00531001
+             OPEN OUTPUT REPFILE                                        00541005
+             IF WS-FS1 = 0                                              00541472
+                DISPLAY 'OPEN SUCCESS'                                  00541572
+             ELSE                                                       00541672
+                DISPLAY 'OPEN FAILED' WS-FS1                            00542076
+             END-IF.                                                    00543076
+             EXEC SQL                                                   00544076
+                OPEN CUR                                                00545076
+             END-EXEC.                                                  00546076
+                                                                        00953900
+      ***********FETCHING RECORD VALUES AND WRITING IN REPFILE********* 00954093
+         READ-PARA.                                                     00955000
+             EXEC SQL                                                   00955372
+                FETCH CUR INTO :HV1-LNO,:HV1-CID,:HV1-TYPE,:HV1-ODATE,  00955472
+                    :HV1-OUTAMT                                         00955572
+             END-EXEC                                                   00955672
+                DISPLAY 'FETCH SQLCODE' SQLCODE                         00955872
+             IF SQLCODE = 100                                           00955982
+                PERFORM SUMMARY-PARA                                    00956082
+             END-IF                                                     00956182
+             COMPUTE WS-REC = WS-REC + 1                                00956572
+             IF WS-REC = 07                                             00956699
+                WRITE REPREC FROM WS-LINE                               00956779
+                PERFORM CNTRL-PARA                                      00956872
+                MOVE 1 TO WS-REC                                        00956983
+             END-IF                                                     00957072
+             MOVE HV1-LNO     TO WS-LNO                                 00957895
+             MOVE HV1-CID     TO WS-CID                                 00958095
+             MOVE HV1-TYPE    TO WS-TYPE                                00959095
+             MOVE HV1-ODATE(1:4) TO YY                                  00959699
+             MOVE HV1-ODATE(6:2) TO MM                                  00959799
+             MOVE HV1-ODATE(9:2) TO DD                                  00959899
+             MOVE TEMPODT        TO WS-ODATE                            00959999
+             MOVE HV1-OUTAMT  TO WS-OUTAMT                              00960099
+             COMPUTE WS-TOTAMT = WS-TOTAMT + WS-OUTAMT                  00960199
+             WRITE REPREC FROM WS-DETAILS                               00960295
+             DISPLAY "WRITE SQLCODE" SQLCODE.                           00960795
+                                                                        00961102
+      ******************WRITING HEADINGS IN REPFILE*****************    00961293
+         CNTRL-PARA.                                                    00962072
+             WRITE REPREC FROM WS-SPACE                                 00962199
+             WRITE REPREC FROM WS-DATE                                  00963072
+             WRITE REPREC FROM WS-PAGE                                  00963286
+             WRITE REPREC FROM WS-HEAD1                                 00963386
+             WRITE REPREC FROM WS-SPACE                                 00963486
+             WRITE REPREC FROM WS-HEAD2                                 00963586
+             WRITE REPREC FROM WS-SPACE                                 00963686
+             ADD 1 TO WS-PG.                                            00963786
+                                                                        00963886
+      ******************WRITING TOTAL OUTAMT IN REPFILE*****************00963993
+         SUMMARY-PARA.                                                  00964086
+             WRITE REPREC FROM WS-LINE                                  00964186
+             WRITE REPREC FROM WS-SPACE                                 00964286
+             WRITE REPREC FROM WS-TOT                                   00964386
+             GO TO END-PARA.                                            00965082
+                                                                        00966079
+        END-PARA.                                                       00967082
+             CLOSE REPFILE.                                             00968082
+             STOP RUN.                                                  00969082

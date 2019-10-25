@@ -1,0 +1,604 @@
+      ******************************************************************00001099
+      *      THE PROGRAM IS ABOUT INDOBANK WHICH PROVIDES MAX 5 LOANS  *00002099
+      * TO NEW OR EXISTING CUSTOMER DEPENDING ON LOAN TYPE.            *00003099
+      * ON BASIS OF OUTSTANDING AMOUNT, LOANS ARE BEING REPAID AND     *00004099
+      * TO OUTSTANDING REPORT. IF ANY OF THE RECORD FLEID IS INVALID   *00005099
+      * THEN THE WHOLE RECORD ALONG WITH REASON IS MOVED TO ERROE FILE.*00006099
+      *                                                                *00007099
+      * AUTHORS    - 1) SHIVANI WADKE                                  *00008099
+      *              2) CHEENMAYA BHUTAD                               *00009099
+      *              3) SAHITI                                         *00009199
+      * FILES USED - 1) OZA066.DB2.TRANSFILE (INPUT RECORD FILE)       *00009299
+      *              2) OZA066.DB2.CASESTUD.ERRORPS (ERROR FILE)       *00009399
+      * TABLES USED- 1) CUSTOMER TABLE                                 *00009499
+      *              2) LOAN TABLE                                     *00009599
+      *              3) LOAN_TRANS TABLE                               *00009699
+      ******************************************************************00009799
+                                                                        00009899
+       ID DIVISION.                                                     00010001
+       PROGRAM-ID.  CASE3.                                              00020099
+                                                                        00021099
+       ENVIRONMENT  DIVISION.                                           00030099
+       INPUT-OUTPUT SECTION.                                            00040001
+       FILE-CONTROL.                                                    00050001
+      **********************INPUT TRANSACTION FILE********************  00051099
+           SELECT INFILE  ASSIGN  TO DD1                                00060099
+           FILE STATUS IS FS1.                                          00070001
+      ***********************OUTPUT ERROR FILE************************  00071099
+           SELECT OUTFILE ASSIGN  TO DD2                                00080099
+           FILE STATUS IS FS2.                                          00090009
+                                                                        00091099
+       DATA         DIVISION.                                           00100099
+       FILE         SECTION.                                            00110099
+       FD INFILE.                                                       00120001
+      ****************RECORD STRUCTURE FOR TYPE 1 INPUT*****************00121099
+       01 REC1.                                                         00130001
+          05 OP                      PIC XX.                            00140001
+             88  ADDITION                          VALUE '01'.          00141019
+          05 WS-CID                  PIC X(5).                          00150001
+          05 WS-NAME                 PIC X(10).                         00160001
+          05 WS-ADDR                 PIC X(20).                         00170001
+          05 FILLER                  PIC X(43).                         00180099
+      ****************RECORD STRUCTURE FOR TYPE 2 INPUT*****************00180199
+       01 REC2.                                                         00190001
+          05 OP                      PIC XX.                            00200001
+             88  UPDATION                          VALUE '02'.          00201019
+          05 WS-CID                  PIC X(5).                          00210001
+          05 WS-ADDR                 PIC X(20).                         00230001
+          05 FILLER                  PIC X(53).                         00240099
+      ****************RECORD STRUCTURE FOR TYPE 3 INPUT*****************00240299
+       01 REC3.                                                         00241007
+          05 OP                      PIC XX.                            00242007
+             88  DELETION                          VALUE '03'.          00243019
+          05 WS-CID                  PIC X(5).                          00244007
+          05 FILLER                  PIC X(73).                         00245099
+      ****************RECORD STRUCTURE FOR TYPE 4 INPUT*****************00245299
+       01 REC4.                                                         00246014
+          05 OP                      PIC XX.                            00247014
+             88  NEWLOAN                           VALUE '04'.          00248019
+          05 WS-CID                  PIC X(5).                          00249014
+          05 WS-TYPE                 PIC X(2).                          00249142
+          05 WS-LOANAMT              PIC 9(7).                          00249227
+          05 FILLER                  PIC X(64).                         00249399
+      ****************RECORD STRUCTURE FOR TYPE 5 INPUT*****************00249599
+       01 REC5.                                                         00249665
+          05 OP                      PIC XX.                            00249765
+             88  REPLOAN                           VALUE '05'.          00249865
+          05 WS-CID                  PIC X(5).                          00249965
+          05 WS-TYPE                 PIC X(2).                          00250065
+          05 WS-LOANID               PIC X(5).                          00250165
+          05 WS-LOANAMT              PIC 9(7).                          00250265
+          05 FILLER                  PIC X(59).                         00250399
+       FD OUTFILE.                                                      00251099
+      ********ERROR FORMAT FOR TYPE 1,2,3 INPUT RECORDS*****************00252099
+       01 OUTREC1.                                                      00260009
+          05 WS-CID                  PIC X(5).                          00261009
+          05 WS-NAME                 PIC X(10).                         00262009
+          05 WS-ADDR                 PIC X(20).                         00263009
+          05 REASON1                 PIC X(45).                         00264009
+      *******************ERROR FORMAT FOR TYPE 4 INPUT******************00264199
+       01 OUTREC2.                                                      00265014
+          05 WS-CID                  PIC X(5).                          00266014
+          05 WS-TYPE                 PIC X(2).                          00266142
+          05 WS-LOANAMT              PIC 9(7).                          00266227
+          05 REASON2                 PIC X(66).                         00266314
+      *******************ERROR FORMAT FOR TYPE 5 INPUT******************00266499
+       01 OUTREC3.                                                      00266563
+          05 WS-CID                  PIC X(5).                          00266663
+          05 WS-TYPE                 PIC X(2).                          00266763
+          05 WS-LOANID               PIC X(5).                          00266863
+          05 WS-LOANAMT              PIC 9(7).                          00266963
+          05 REASON3                 PIC X(61).                         00267064
+       WORKING-STORAGE SECTION.                                         00270001
+      *******************INCLUDING TABLES IN W-S SECTION**************  00270199
+           EXEC SQL                                                     00271001
+            INCLUDE CUSTOMER                                            00272001
+           END-EXEC.                                                    00273001
+           EXEC SQL                                                     00274001
+            INCLUDE SQLCA                                               00275001
+           END-EXEC.                                                    00276001
+           EXEC SQL                                                     00277014
+            INCLUDE LOAN                                                00278014
+           END-EXEC.                                                    00279014
+           EXEC SQL                                                     00279114
+            INCLUDE LOANTRAN                                            00279214
+           END-EXEC.                                                    00279414
+      *******************DECLARING CURSOR IN W-S SECTION**************  00279599
+           EXEC SQL                                                     00279699
+            DECLARE DELCUR CURSOR FOR                                   00279899
+            SELECT CID,STATUS,TYPE                                      00279999
+            FROM LOAN_TRANS                                             00280099
+           END-EXEC.                                                    00280199
+      *********************DECLARING W-S VARIABLES*******************   00280299
+       77 FS1                        PIC 99.                            00281053
+       77 FS2                        PIC 99.                            00290053
+       77 CNTR                       PIC 99        VALUE 0.             00291099
+       77 RATE                       PIC S99V99.                        00292053
+       77 TERM                       PIC 9.                             00293053
+       77 TEMPOUT                    PIC 9(6).                          00294065
+       77 TEMPDT                     PIC X(6).                          00299175
+       77 TEMP2                      PIC 9(7).                          00299277
+       77 TEMP3                      PIC 9(7).                          00299377
+       77 CNTR1                      PIC 9(7)      VALUE ZEROS.         00299499
+       77 CNTR2                      PIC 9(7)      VALUE ZEROS.         00299599
+       77 VAR1                       PIC X(10)     VALUE SPACES.        00299699
+       77 VAR2                       PIC X(10)     VALUE SPACES.        00299799
+       77 VAR3                       PIC X(10)     VALUE SPACES.        00299899
+       77 COUNT1                     PIC 9         VALUE ZEROS.         00299999
+                                                                        00300199
+       PROCEDURE    DIVISION.                                           00301099
+       MAIN-PARA.                                                       00310001
+           PERFORM OPEN-PARA                                            00320001
+           STOP RUN.                                                    00330001
+      *********************OPENING INFILE*********************          00331099
+       OPEN-PARA.                                                       00340001
+           OPEN INPUT INFILE                                            00350001
+           OPEN OUTPUT OUTFILE                                          00351099
+           EXEC SQL                                                     00352099
+              OPEN DELCUR                                               00353099
+           END-EXEC                                                     00354099
+           IF FS1 = 00                                                  00360001
+             PERFORM READ-PARA UNTIL FS1 NOT = 00                       00370004
+           ELSE                                                         00380001
+             DISPLAY "OPEN NOT SUCCESS" FS1                             00390001
+           END-IF                                                       00400001
+           IF FS2 = 00                                                  00401011
+             DISPLAY "OPEN SUCCESS"                                     00402013
+           ELSE                                                         00403011
+             DISPLAY "OPEN NOT SUCCESS" FS2                             00404011
+           END-IF                                                       00405011
+           EXEC SQL                                                     00406099
+             CLOSE DELCUR                                               00407099
+           END-EXEC                                                     00408099
+           CLOSE INFILE                                                 00410099
+           CLOSE OUTFILE.                                               00411099
+      *********************READING INFILE*********************          00411199
+       READ-PARA.                                                       00412099
+           READ INFILE                                                  00430001
+           AT END DISPLAY "ALL RECORDS PROCESSED"                       00440001
+           NOT AT END                                                   00450001
+              PERFORM EVALUATE-PARA                                     00460001
+           END-READ.                                                    00470001
+      ****************CHECKING RECORD TYPE FROM TRANS FILE************  00471099
+       EVALUATE-PARA.                                                   00480001
+           EVALUATE TRUE                                                00490001
+           WHEN OP OF REC1 = '01'                                       00491001
+              PERFORM CHECK-PARA1                                       00500001
+           WHEN OP OF REC2 = '02'                                       00501001
+              PERFORM CHECK-PARA2                                       00502001
+           WHEN OP OF REC3 = '03'                                       00503007
+              PERFORM CHECK-PARA3                                       00504007
+           WHEN OP OF REC4 = '04'                                       00505014
+              PERFORM CHECK-PARA4                                       00506014
+           WHEN OP OF REC5 = '05'                                       00507065
+              PERFORM CHECK-PARA5                                       00508065
+           WHEN OTHER                                                   00510001
+              DISPLAY "INVALID RECORD OPERATION"                        00520099
+           END-EVALUATE.                                                00530001
+                                                                        00530199
+      ************CHECKING VALIDATIONS FOR RECORD TYPE 1************    00531099
+       CHECK-PARA1.                                                     00540001
+           IF WS-CID        OF REC1 IS NOT = SPACES                     00541099
+              IF WS-NAME    OF REC1 IS NOT = SPACES                     00542099
+                 IF WS-ADDR OF REC1 IS NOT = SPACES                     00543001
+                    UNSTRING WS-CID OF REC1 DELIMITED BY SPACES         00543199
+                    INTO VAR1, VAR2, VAR3 TALLYING IN COUNT1            00543299
+                    IF COUNT1 > 1                                       00543399
+                      MOVE "CID HAS SPACES IN BETWEEN" TO REASON1       00543499
+                      PERFORM ERROR-PARA                                00543599
+                    ELSE                                                00543699
+                    MOVE WS-CID OF REC1 TO HV-CID                       00543799
+                      EXEC SQL                                          00543899
+                        SELECT CID INTO :HV-CID                         00543999
+                        FROM  CUSTOMER                                  00544099
+                        WHERE CID = :HV-CID                             00544199
+                      END-EXEC                                          00544299
+                      IF SQLCODE = 0                                    00544399
+                        MOVE "CUST-ID ALREADY EXISTS" TO REASON1        00544499
+                        PERFORM ERROR-PARA                              00544599
+                      ELSE                                              00544699
+                        PERFORM ADD-PARA                                00544799
+                      END-IF                                            00544899
+                    END-IF                                              00544999
+                 ELSE                                                   00545001
+                   MOVE "ADDRESS IN NOT VALID INPUT"    TO REASON1      00545199
+                   PERFORM ERROR-PARA                                   00545299
+                 END-IF                                                 00547001
+              ELSE                                                      00548001
+                MOVE "NAME IS NOT VALID INPUT"          TO REASON1      00548199
+                PERFORM ERROR-PARA                                      00548299
+              END-IF                                                    00549101
+           ELSE                                                         00549201
+             MOVE "CID IS NOT VALID INPUT"              TO REASON1      00549399
+             PERFORM ERROR-PARA                                         00549499
+           END-IF.                                                      00549603
+      *************ADDING A CUSTOMER IN CUSTOMER TABLE*************     00549799
+        ADD-PARA.                                                       00550602
+           MOVE WS-CID OF REC1 TO HV-CID                                00551001
+           MOVE WS-NAME OF REC1 TO HV-NAME                              00560001
+           MOVE WS-ADDR OF REC1 TO HV-ADDR-TEXT                         00570001
+           MOVE LENGTH OF HV-ADDR-TEXT TO HV-ADDR-LEN                   00580001
+           EXEC SQL                                                     00590001
+              INSERT INTO CUSTOMER                                      00600001
+              VALUES (:HV-CID,:HV-NAME,:HV-ADDR)                        00610001
+           END-EXEC                                                     00620001
+           IF SQLCODE = 0                                               00630001
+              DISPLAY "ADD SUCCESS"                                     00640001
+           ELSE                                                         00650001
+              DISPLAY "ADD UNSUCCESS" SQLCODE                           00660001
+           END-IF.                                                      00670001
+                                                                        00670199
+      ***********CHECKING VALIDATIONS FOR RECORD TYPE 2************     00671099
+        CHECK-PARA2.                                                    00680001
+           IF WS-CID     OF REC2 IS NOT = SPACES                        00690099
+             IF WS-ADDR  OF REC2 IS NOT = SPACES                        00700099
+             MOVE WS-CID OF REC2 TO HV-CID                              00701099
+             EXEC SQL                                                   00702099
+                SELECT CID INTO :HV-CID                                 00703099
+                FROM CUSTOMER                                           00704099
+                WHERE CID = :HV-CID                                     00705099
+             END-EXEC                                                   00706099
+             IF SQLCODE = 0                                             00707099
+                PERFORM UPDATE-PARA                                     00708099
+             ELSE                                                       00709099
+                MOVE "CUST-ID DOES NOT EXISTS" TO REASON1               00709199
+                PERFORM ERROR-PARA                                      00709299
+             END-IF                                                     00709399
+             ELSE                                                       00720099
+               MOVE "ADDRESS IS INVALID INPUT" TO REASON1               00730099
+               PERFORM ERROR-PARA                                       00731099
+             END-IF                                                     00740099
+           ELSE                                                         00750001
+             MOVE "CID IS NOT VALID INPUT"     TO REASON1               00760099
+             PERFORM ERROR-PARA                                         00761099
+           END-IF.                                                      00770003
+      *************UPDATING CUSTOMER ADDR IN CUSTOMER TABLE*************00780099
+       UPDATE-PARA.                                                     00890001
+           MOVE WS-CID  OF REC2         TO HV-CID                       00900099
+           MOVE WS-ADDR OF REC2         TO HV-ADDR-TEXT                 00910099
+           MOVE LENGTH  OF HV-ADDR-TEXT TO HV-ADDR-LEN                  00920099
+           EXEC SQL                                                     00930001
+              UPDATE CUSTOMER                                           00940001
+              SET ADDR = :HV-ADDR                                       00950001
+              WHERE CID = :HV-CID                                       00960001
+           END-EXEC                                                     00970001
+           IF SQLCODE = 0                                               00980001
+              DISPLAY "UPDATE SUCCESS"                                  00990001
+           ELSE                                                         01000001
+              DISPLAY "UPDATE FAILED"                                   01010099
+           END-IF.                                                      01020001
+                                                                        01020199
+      ***********CHECKING VALIDATIONS FOR RECORD TYPE 3************     01021099
+       CHECK-PARA3.                                                     01030007
+           IF WS-CID      OF REC3 IS NOT = SPACES                       01040099
+              MOVE WS-CID OF REC3 TO HV-CID                             01050007
+              EXEC SQL                                                  01060007
+                 SELECT CID INTO :HV-CID                                01070007
+                 FROM CUSTOMER                                          01080007
+                 WHERE CID = :HV-CID                                    01090007
+              END-EXEC                                                  01100007
+              DISPLAY "SUCCESS"                                         01101097
+              IF SQLCODE = 0                                            01125091
+                 PERFORM DELETE-PARA                                    01126091
+              ELSE                                                      01127091
+                 MOVE "CUST-ID DOES NOT EXIST" TO REASON1               01140010
+                 PERFORM ERROR-PARA                                     01141010
+              END-IF                                                    01150007
+           ELSE                                                         01160007
+             MOVE "CID IS NOT VALID"           TO REASON1               01170099
+             PERFORM ERROR-PARA                                         01171099
+           END-IF.                                                      01180007
+      *************DELETING CUSTOMER ID FROM CUSTOMER TABLE*************01181099
+       DELETE-PARA.                                                     01190007
+           MOVE WS-CID OF REC3 TO HV-CID                                01191099
+           MOVE WS-CID OF REC3 TO HV1-CID                               01200091
+           MOVE 'C' TO HV1-STATUS                                       01200199
+              EXEC SQL                                                  01200299
+                 SELECT COUNT(CID) INTO :HV1-OUTAMT                     01200399
+                 FROM LOAN_TRANS                                        01200499
+                 WHERE CID = :HV1-CID                                   01200599
+              END-EXEC                                                  01200699
+           IF SQLCODE = 0                                               01200799
+           MOVE HV1-OUTAMT TO CNTR1                                     01200899
+           DISPLAY "CNTR1: " CNTR1                                      01200999
+           PERFORM FETCH-PARA UNTIL SQLCODE NOT = 0                     01201099
+            IF (CNTR1 = CNTR2)                                          01202099
+              EXEC SQL                                                  01210007
+                 DELETE                                                 01220007
+                 FROM CUSTOMER                                          01230099
+                 WHERE CID = :HV-CID                                    01240099
+              END-EXEC                                                  01250007
+              IF SQLCODE = 0                                            01260007
+                 DISPLAY "DELETE SUCCESS"                               01270007
+              ELSE                                                      01280007
+                 DISPLAY "DELETE FAIL" SQLCODE                          01290093
+              END-IF                                                    01300099
+            ELSE                                                        01301099
+              DISPLAY "SQLCODE: " SQLCODE                               01301199
+              MOVE "CUST HAS OPEN LOANS "               TO REASON1      01302099
+              PERFORM ERROR-PARA                                        01304099
+            END-IF                                                      01305099
+           ELSE                                                         01305199
+             MOVE "CUST-ID DOESN'T EXIST IN LOAN_TRANS" TO REASON1      01305299
+             PERFORM ERROR-PARA                                         01305499
+           END-IF.                                                      01305599
+      ***********FETCHING VALUES FROM LOAN TRANS USING CURSOR********** 01305699
+       FETCH-PARA.                                                      01306099
+           EXEC SQL                                                     01307099
+              FETCH DELCUR INTO :HV1-CID,:HV1-STATUS,:HV1-TYPE          01308099
+           END-EXEC                                                     01309099
+           IF SQLCODE = 0                                               01309199
+              DISPLAY HV1-CID, HV1-STATUS, HV1-TYPE                     01309299
+              IF HV1-CID = WS-CID OF REC3 AND HV1-STATUS = 'C'          01309399
+                ADD 1 TO CNTR2                                          01309599
+              ELSE                                                      01309699
+                DISPLAY "STATUS NOT C"                                  01309799
+              END-IF                                                    01309899
+           ELSE                                                         01309999
+              DISPLAY "FETCH FAILED" SQLCODE                            01310099
+           END-IF                                                       01310199
+           DISPLAY "CNTR2: " CNTR2.                                     01310299
+                                                                        01310399
+      ***********CHECKING VALIDATIONS FOR RECORD TYPE 4************     01310499
+       CHECK-PARA4.                                                     01310542
+           IF WS-CID         OF REC4 IS NOT = SPACES                    01310699
+             IF WS-TYPE      OF REC4 IS NOT = SPACES                    01310799
+               IF WS-LOANAMT OF REC4 IS NOT = SPACES                    01310899
+                 MOVE WS-CID OF REC4 TO HV1-CID                         01310942
+                 EXEC SQL                                               01311042
+                 SELECT CID INTO :HV-CID                                01311142
+                 FROM CUSTOMER                                          01311242
+                 WHERE CID = :HV1-CID                                   01311342
+                 END-EXEC                                               01311442
+                 IF SQLCODE = 0                                         01311599
+                   PERFORM LOAN-PARA                                    01311699
+                 ELSE                                                   01311799
+                   MOVE "CID DOES NOT EXIST"    TO REASON2              01311899
+                 PERFORM ERROR-PARA                                     01311999
+                 END-IF                                                 01312099
+               ELSE                                                     01312199
+                 MOVE "LOANAMT NOT VALID INPUT" TO REASON2              01312242
+                 PERFORM ERROR-PARA                                     01312346
+               END-IF                                                   01312499
+             ELSE                                                       01312599
+               MOVE "TYPE IS NOT VALID INPUT"   TO REASON2              01312699
+               PERFORM ERROR-PARA                                       01312799
+               END-IF                                                   01312899
+           ELSE                                                         01312999
+             MOVE "CID IS NOT VALID INPUT"      TO REASON2              01313099
+             PERFORM ERROR-PARA                                         01313199
+           END-IF.                                                      01313242
+      ***********INSERTING VALUES IN LOAN TRANS TABLE***********        01313399
+       LOAN-PARA.                                                       01313442
+           MOVE WS-CID  OF REC4 TO HV1-CID                              01313599
+           MOVE WS-TYPE OF REC4 TO HV1-TYPE                             01313638
+           MOVE 'O' TO HV1-STATUS                                       01313738
+              EXEC SQL                                                  01313838
+                 SELECT MAX(LNO) INTO :HV1-OUTAMT FROM LOAN_TRANS       01313943
+              END-EXEC                                                  01314038
+           MOVE HV1-OUTAMT TO CNTR                                      01314138
+           DISPLAY "LNO: " CNTR                                         01314253
+              EXEC SQL                                                  01314399
+                 SELECT CID,TYPE,STATUS INTO :HV1-CID,:HV1-TYPE,        01314499
+                     :HV1-STATUS FROM LOAN_TRANS                        01314599
+                 WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE              01314699
+                 AND STATUS = :HV1-STATUS                               01314799
+              END-EXEC                                                  01314899
+           IF SQLCODE NOT = 0                                           01314999
+              EXEC SQL                                                  01315038
+                 SELECT COUNT(:HV1-CID) INTO :HV1-OUTAMT                01315138
+                 FROM LOAN_TRANS                                        01315243
+                 WHERE CID = :HV1-CID                                   01315338
+                 AND STATUS = :HV1-STATUS                               01316039
+              END-EXEC                                                  01317039
+           DISPLAY "COUNT OF " HV1-CID ": " HV1-OUTAMT                  01317153
+             IF HV1-OUTAMT < 5                                          01317299
+              DISPLAY "TYPE: " HV1-TYPE                                 01317353
+              EXEC SQL                                                  01317439
+                 SELECT ROI INTO :HV-ROI                                01317539
+                 FROM LOAN                                              01317639
+                 WHERE TYPE = :HV1-TYPE                                 01317739
+              END-EXEC                                                  01317839
+              MOVE HV-ROI TO RATE                                       01317939
+              DISPLAY "RATE: " RATE                                     01318053
+              EXEC SQL                                                  01318139
+                 SELECT TERM INTO :HV-TERM                              01318239
+                 FROM LOAN                                              01318339
+                 WHERE TYPE = :HV1-TYPE                                 01318439
+              END-EXEC                                                  01318539
+              MOVE HV-TERM TO TERM                                      01318639
+              DISPLAY "TERM: " TERM                                     01318753
+             ELSE                                                       01318899
+               MOVE "NO OF LOAN LIMIT REACHED" TO REASON2               01318999
+               PERFORM ERROR-PARA                                       01319099
+             END-IF                                                     01319199
+             EVALUATE WS-TYPE OF REC4                                   01319299
+              WHEN 'PL'                                                 01319349
+                 IF WS-LOANAMT OF REC4 > 100000                         01319499
+                   MOVE "LOANAMT EXCEEDS THE MAX VALUE" TO REASON2      01319540
+                   PERFORM ERROR-PARA                                   01319640
+                   MOVE 0 TO TEMPOUT                                    01319765
+                 ELSE                                                   01319899
+                   PERFORM CALCULATION-PARA                             01319940
+                 END-IF                                                 01320099
+              WHEN 'EL'                                                 01320149
+                 IF WS-LOANAMT OF REC4 > 100000                         01320299
+                   MOVE "LOANAMT EXCEEDS THE MAX VALUE" TO REASON2      01320340
+                   PERFORM ERROR-PARA                                   01320440
+                   MOVE 0 TO TEMPOUT                                    01320565
+                 ELSE                                                   01320699
+                   PERFORM CALCULATION-PARA                             01320740
+                 END-IF                                                 01320899
+              WHEN 'HL'                                                 01320949
+                 IF WS-LOANAMT OF REC4 > 500000                         01321099
+                   MOVE "LOANAMT EXCEEDS THE MAX VALUE" TO REASON2      01321140
+                   PERFORM ERROR-PARA                                   01321240
+                   MOVE 0 TO TEMPOUT                                    01321365
+                 ELSE                                                   01321499
+                   PERFORM CALCULATION-PARA                             01321540
+                 END-IF                                                 01321699
+              WHEN 'CL'                                                 01321749
+                 IF WS-LOANAMT OF REC4 > 300000                         01321899
+                   MOVE "LOANAMT EXCEEDS THE MAX VALUE" TO REASON2      01321940
+                   PERFORM ERROR-PARA                                   01322040
+                   MOVE 0 TO TEMPOUT                                    01322165
+                 ELSE                                                   01322299
+                   PERFORM CALCULATION-PARA                             01322340
+                 END-IF                                                 01322499
+              WHEN 'AL'                                                 01322549
+                 IF WS-LOANAMT OF REC4 > 150000                         01322699
+                   MOVE "LOANAMT EXCEEDS THE MAX VALUE" TO REASON2      01322740
+                   PERFORM ERROR-PARA                                   01322840
+                   MOVE 0 TO TEMPOUT                                    01322965
+                 ELSE                                                   01323099
+                   PERFORM CALCULATION-PARA                             01323140
+                 END-IF                                                 01323299
+              WHEN OTHER                                                01323399
+                   MOVE "INVALID LOAN TYPE" TO REASON2                  01323499
+                   PERFORM ERROR-PARA                                   01323599
+              END-EVALUATE                                              01323740
+              EXEC SQL                                                  01323840
+                  SELECT LID INTO :HV-LID                               01323943
+                  FROM LOAN                                             01324040
+                  WHERE TYPE = :HV1-TYPE                                01324140
+              END-EXEC                                                  01324240
+              MOVE HV-LID TO HV1-LID                                    01324343
+              IF TEMPOUT NOT = 0                                        01324499
+                MOVE 'O' TO HV1-STATUS                                  01324599
+                ADD 1 TO CNTR                                           01324699
+                MOVE CNTR TO HV1-LNO                                    01324799
+                DISPLAY "LNO: " HV1-LNO                                 01324899
+                EXEC SQL                                                01325799
+                  INSERT INTO LOAN_TRANS (LNO,CID,LID,TYPE,STATUS,      01325854
+                          OUTAMT)                                       01325959
+                  VALUES (:HV1-LNO,:HV1-CID,:HV1-LID,:HV1-TYPE,         01326054
+                  :HV1-STATUS,:HV1-OUTAMT)                              01326159
+                END-EXEC                                                01326399
+                IF SQLCODE = 0                                          01326599
+                 DISPLAY "INSERTED"                                     01326654
+                ELSE                                                    01326799
+                 DISPLAY "INSERT FAIL " SQLCODE                         01326854
+                END-IF                                                  01326999
+             END-IF                                                     01327099
+           ELSE                                                         01327199
+             MOVE "TYPE OF LOAN IS DUPLICATE" TO REASON2                01327299
+             PERFORM ERROR-PARA                                         01327399
+           END-IF.                                                      01327499
+      ********************CALCULATING TOTAL OUTAMT********************  01327599
+       CALCULATION-PARA.                                                01327654
+           COMPUTE TEMPOUT = WS-LOANAMT OF REC4 +                       01327765
+                            (WS-LOANAMT OF REC4 * RATE * TERM) / 100    01327899
+           DISPLAY "TEMPOUT: " TEMPOUT                                  01327965
+           MOVE TEMPOUT TO HV1-OUTAMT.                                  01328065
+                                                                        01328199
+      ***********CHECKING VALIDATIONS FOR RECORD TYPE 5************     01328299
+       CHECK-PARA5.                                                     01328365
+           IF WS-CID              OF REC5 IS NOT = SPACES               01328499
+              IF WS-TYPE          OF REC5 IS NOT = SPACES               01328599
+                 IF WS-LOANID     OF REC5 IS NOT = SPACES               01328699
+                    IF WS-LOANAMT OF REC5 IS NOT = SPACES               01328765
+                    MOVE WS-CID   OF REC5 TO HV1-CID                    01328899
+                    MOVE WS-TYPE  OF REC5 TO HV1-TYPE                   01328999
+                    EXEC SQL                                            01330370
+                      SELECT OUTAMT INTO :HV1-OUTAMT                    01330470
+                      FROM LOAN_TRANS                                   01330570
+                      WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE         01330670
+                    END-EXEC                                            01330770
+                    IF SQLCODE = 0                                      01330870
+                       IF (WS-LOANAMT OF REC5 < HV1-OUTAMT)             01330975
+                          PERFORM REPAY-PARA1                           01331075
+                       END-IF                                           01331170
+                       IF (WS-LOANAMT OF REC5 = HV1-OUTAMT)             01331270
+                          PERFORM REPAY-PARA2                           01331375
+                       END-IF                                           01331470
+                       IF (WS-LOANAMT OF REC5 > HV1-OUTAMT)             01331575
+                          MOVE "LOANAMT REPAID IS MORE" TO REASON3      01331690
+                          PERFORM ERROR-PARA                            01331775
+                       END-IF                                           01331970
+                    ELSE                                                01332070
+                       MOVE "OUTAMT FETCH NOT SUCCESS"     TO REASON3   01332199
+                       DISPLAY  SQLCODE                                 01332299
+                       PERFORM ERROR-PARA                               01332375
+                    END-IF                                              01332470
+                    ELSE                                                01332870
+                       MOVE "LOANAMT IS NOT VALID INPUT"   TO REASON3   01332999
+                       PERFORM ERROR-PARA                               01333175
+                    END-IF                                              01333270
+                 ELSE                                                   01333399
+                   MOVE "LOANID  IS NOT VALID INPUT"   TO REASON3       01333499
+                   PERFORM ERROR-PARA                                   01333599
+                 END-IF                                                 01333799
+              ELSE                                                      01333899
+                MOVE "LOANTYPE  IS NOT VALID INPUT" TO REASON3          01333999
+                PERFORM ERROR-PARA                                      01334099
+              END-IF                                                    01334299
+           ELSE                                                         01334399
+             MOVE "CID IS NOT VALID INPUT"       TO REASON3             01334499
+             PERFORM ERROR-PARA                                         01334599
+           END-IF.                                                      01334799
+      **********CALCULATING TOTAL OUTAMT IF LOANAMT IS LESS*************01334899
+       REPAY-PARA1.                                                     01334975
+           MOVE WS-CID  OF REC5 TO HV1-CID                              01335099
+           MOVE WS-TYPE OF REC5 TO HV1-TYPE                             01335179
+           EXEC SQL                                                     01335299
+               SELECT OUTAMT INTO :HV1-OUTAMT                           01335399
+               FROM LOAN_TRANS                                          01335499
+               WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE                01335599
+           END-EXEC                                                     01335699
+           COMPUTE TEMP2 = HV1-OUTAMT - (WS-LOANAMT OF REC5)            01335775
+           MOVE TEMP2 TO HV1-OUTAMT                                     01335875
+           EXEC SQL                                                     01335975
+                UPDATE LOAN_TRANS                                       01336075
+                SET OUTAMT = :HV1-OUTAMT                                01336175
+                WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE               01336275
+           END-EXEC.                                                    01336475
+      **********CALCULATING TOTAL OUTAMT IF LOANAMT IS EQUAL*********** 01336599
+       REPAY-PARA2.                                                     01336675
+           MOVE WS-CID  OF REC5 TO HV1-CID                              01336799
+           MOVE WS-TYPE OF REC5 TO HV1-TYPE                             01336879
+           EXEC SQL                                                     01336999
+                SELECT OUTAMT INTO :HV1-OUTAMT                          01337099
+                FROM LOAN_TRANS                                         01337199
+                WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE               01337299
+           END-EXEC                                                     01337399
+           COMPUTE TEMP3 = HV1-OUTAMT - (WS-LOANAMT OF REC5)            01337476
+           MOVE TEMP3 TO HV1-OUTAMT                                     01337575
+           MOVE 'C'   TO HV1-STATUS                                     01337699
+           EXEC SQL                                                     01337775
+                UPDATE LOAN_TRANS                                       01337875
+                SET OUTAMT = :HV1-OUTAMT,STATUS = :HV1-STATUS,          01337981
+                CDATE = CURRENT_DATE + 1 DAY                            01338082
+                WHERE CID = :HV1-CID AND TYPE = :HV1-TYPE               01338175
+           END-EXEC                                                     01338379
+           DISPLAY "UPDATE SUCCESS".                                    01338479
+                                                                        01338599
+      *****************MOVING RECORDS TO ERROR FILE*****************    01338699
+       ERROR-PARA.                                                      01338770
+           IF (OP OF REC1 = '01')                                       01339470
+           MOVE WS-CID     OF REC1 TO WS-CID     OF OUTREC1             01339599
+           MOVE WS-NAME    OF REC1 TO WS-NAME    OF OUTREC1             01340099
+           MOVE WS-ADDR    OF REC1 TO WS-ADDR    OF OUTREC1             01350099
+           WRITE OUTREC1                                                01360010
+           END-IF                                                       01370010
+           IF (OP OF REC2 = '02')                                       01380010
+           MOVE WS-CID     OF REC2 TO WS-CID     OF OUTREC1             01390099
+           MOVE WS-ADDR    OF REC2 TO WS-ADDR    OF OUTREC1             01400099
+           WRITE OUTREC1                                                01410010
+           END-IF                                                       01420010
+           IF (OP OF REC3 = '03')                                       01430010
+           MOVE WS-CID     OF REC3 TO WS-CID     OF OUTREC1             01440099
+           WRITE OUTREC1                                                01450010
+           END-IF                                                       01460015
+           IF (OP OF REC4 = '04')                                       01470015
+           MOVE WS-CID     OF REC4 TO WS-CID     OF OUTREC2             01480099
+           MOVE WS-TYPE    OF REC4 TO WS-TYPE    OF OUTREC2             01481099
+           MOVE WS-LOANAMT OF REC4 TO WS-LOANAMT OF OUTREC2             01482015
+           WRITE OUTREC2                                                01490015
+           END-IF                                                       01500075
+           IF (OP OF REC5 = '05')                                       01510075
+           MOVE WS-CID     OF REC5 TO WS-CID     OF OUTREC3             01520099
+           MOVE WS-TYPE    OF REC5 TO WS-TYPE    OF OUTREC3             01530099
+           MOVE WS-LOANID  OF REC5 TO WS-LOANID  OF OUTREC3             01540099
+           MOVE WS-LOANAMT OF REC5 TO WS-LOANAMT OF OUTREC3             01550075
+           WRITE OUTREC3                                                01560075
+           END-IF.                                                      01570075
